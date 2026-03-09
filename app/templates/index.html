@@ -2,10 +2,26 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>課題管理アプリ - 作業0</title>
+    <title>課題管理 - Step1</title>
 </head>
 <body>
-    <h1>課題管理アプリ：開発開始</h1>
-    <p>Docker + FastAPI + Jinja2 の環境構築が完了しました。</p>
+    <h1>📝 課題管理（開発開始）</h1>
+    <input type="text" id="subject" placeholder="授業名">
+    <input type="text" id="content" placeholder="内容">
+    <button onclick="addTask()">追加</button>
+    <ul id="task-list"></ul>
+
+    <script>
+        let tasks = [];
+        function addTask() {
+            const t = {
+                subject: document.getElementById('subject').value,
+                content: document.getElementById('content').value
+            };
+            tasks.push(t);
+            const list = document.getElementById('task-list');
+            list.innerHTML += `<li>${t.subject}: ${t.content}</li>`;
+        }
+    </script>
 </body>
 </html>
