@@ -2,27 +2,30 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>課題管理アプリ - ステップ3</title>
+    <title>大学生の課題管理アプリ - 最終版</title>
     <style>
-        /* 【ステップ2】で整えた基本デザイン */
+        /* 【ステップ2】基本デザイン：読みやすく整理 */
         body { font-family: sans-serif; padding: 20px; background-color: #f4f7f6; }
-        .container { max-width: 900px; margin: auto; background: white; padding: 20px; border-radius: 8px; }
+        .container { max-width: 1000px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
         
-        /* 【ステップ1】から続くテーブルの基本 */
+        /* 【ステップ1】テーブル基本構造 */
         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { border-bottom: 1px solid #eee; padding: 12px; text-align: left; font-size: 14px; }
+        th, td { border-bottom: 1px solid #eee; padding: 12px; text-align: left; }
+        th { background: #34495e; color: white; }
 
-        /* 【ステップ3】履歴情報を見やすくするためのスタイル */
+        /* 【ステップ3】バッジと履歴表示（先生の指示を反映） */
         .time-info { font-size: 11px; color: #888; display: block; }
         .badge { padding: 4px 8px; border-radius: 12px; font-size: 11px; border: none; cursor: pointer; color: white; }
-        .not-submitted { background: #e74c3c; } /* 未提出用（赤） */
-        .completed { background: #2ecc71; }    /* 完了用（緑） */
+        .not-submitted { background: #e74c3c; }
+        .completed { background: #2ecc71; }
+
+        /* 【ステップ4】削除ボタンのスタイルを追加 */
+        .del-btn { background: #95a5a6; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>📝 課題管理 (履歴記録機能)</h1>
-        
+        <h1>📝 課題管理システム (完成版)</h1>
         <div>
             <input type="text" id="subject" placeholder="授業名">
             <input type="text" id="content" placeholder="内容">
@@ -33,11 +36,8 @@
         <table>
             <thead>
                 <tr>
-                    <th>授業名</th>
-                    <th>内容</th>
-                    <th>締切</th>
-                    <th>状況</th>
-                    <th>履歴情報（登録日/更新日）</th>
+                    <th>授業名</th><th>内容</th><th>締切</th><th>状況</th><th>履歴</th>
+                    <th>操作</th>
                 </tr>
             </thead>
             <tbody id="task-list"></tbody>
@@ -45,72 +45,64 @@
     </div>
 
     <script>
-        // 【ステップ2】LocalStorageからの読み込み
+        // 【ステップ2】LocalStorageの読み込み
         let tasks = JSON.parse(localStorage.getItem('myTasks')) || [];
 
-        // 【ステップ1】課題追加の基本機能
+        // 【ステップ1】課題追加の基本
         function addTask() {
             const subject = document.getElementById('subject').value;
             const content = document.getElementById('content').value;
             const deadline = document.getElementById('deadline').value;
-
             if (!subject || !content || !deadline) return alert("入力してください");
 
-            // 【ステップ3】先生の指示：「いつ追加したか」がわかるように日時を取得
+            // 【ステップ3】日時の取得
             const now = new Date().toLocaleString('ja-JP');
 
             const newTask = {
-                id: Date.now(), // 個別識別のためのID
-                subject,
-                content,
-                deadline,
-                status: "未提出",  // 【ステップ3】初期状態を設定
-                created_at: now,   // 【ステップ3】登録日時
-                updated_at: now    // 【ステップ3】更新日時（初期は登録と同じ）
+                id: Date.now(),
+                subject, content, deadline,
+                status: "未提出",
+                created_at: now,
+                updated_at: now,
+                // 【ステップ4】論理削除フラグを追加（0:表示, 1:非表示）
+                is_deleted: 0 
             };
-            
             tasks.push(newTask);
             saveAndRender();
         }
 
-        // 【ステップ3】状況（未提出/完了）を切り替える関数
-        // 状況を変えるたびに「更新日時」を上書きするのがポイント
+        // 【ステップ3】更新日時を伴うステータス変更
         function toggleStatus(id) {
             const now = new Date().toLocaleString('ja-JP');
-            tasks = tasks.map(t => {
-                if (t.id === id) {
-                    const nextStatus = t.status === "未提出" ? "完了" : "未提出";
-                    return { ...t, status: nextStatus, updated_at: now }; // 更新日時を最新に
-                }
-                return t;
-            });
+            tasks = tasks.map(t => t.id === id ? { ...t, status: t.status === "未提出" ? "完了" : "未提出", updated_at: now } : t);
             saveAndRender();
         }
 
-        // 【ステップ2】データの保存と表示
+        // 【ステップ4】論理削除の実行関数
+        // データを配列から消さず、フラグを立てて「更新日」を記録する
+        function deleteTask(id) {
+            const now = new Date().toLocaleString('ja-JP');
+            tasks = tasks.map(t => t.id === id ? { ...t, is_deleted: 1, updated_at: now } : t);
+            saveAndRender();
+        }
+
+        // 【ステップ1・2】保存と表示
         function saveAndRender() {
             localStorage.setItem('myTasks', JSON.stringify(tasks));
             const list = document.getElementById('task-list');
             
-            // 【ステップ3】表示内容に「状況ボタン」と「登録/更新日時」を追加
-            list.innerHTML = tasks.map(t => `
+            // 【ステップ4】削除フラグが0（未削除）のものだけを表示に反映
+            list.innerHTML = tasks.filter(t => t.is_deleted === 0).map(t => `
                 <tr>
                     <td>${t.subject}</td>
                     <td>${t.content}</td>
                     <td>${t.deadline}</td>
-                    <td>
-                        <button class="badge ${t.status === '完了' ? 'completed' : 'not-submitted'}" onclick="toggleStatus(${t.id})">
-                            ${t.status}
-                        </button>
-                    </td>
-                    <td>
-                        <span class="time-info">登録: ${t.created_at}</span>
-                        <span class="time-info">更新: ${t.updated_at}</span>
-                    </td>
+                    <td><button class="badge ${t.status === '完了' ? 'completed' : 'not-submitted'}" onclick="toggleStatus(${t.id})">${t.status}</button></td>
+                    <td><span class="time-info">登録: ${t.created_at}</span><span class="time-info">更新: ${t.updated_at}</span></td>
+                    <td><button class="del-btn" onclick="deleteTask(${t.id})">削除</button></td>
                 </tr>
             `).join('');
         }
-
         saveAndRender();
     </script>
 </body>
