@@ -2,36 +2,53 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>課題管理アプリ - ステップ2</title>
+    <title>課題管理アプリ - ステップ3</title>
     <style>
+        /* 【ステップ2】で整えた基本デザイン */
         body { font-family: sans-serif; padding: 20px; background-color: #f4f7f6; }
-        .container { max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 8px; }
-        .input-form { margin-bottom: 20px; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { border-bottom: 1px solid #ddd; padding: 10px; text-align: left; }
+        .container { max-width: 900px; margin: auto; background: white; padding: 20px; border-radius: 8px; }
+        
+        /* 【ステップ1】から続くテーブルの基本 */
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border-bottom: 1px solid #eee; padding: 12px; text-align: left; font-size: 14px; }
+
+        /* 【ステップ3】履歴情報を見やすくするためのスタイル */
+        .time-info { font-size: 11px; color: #888; display: block; }
+        .badge { padding: 4px 8px; border-radius: 12px; font-size: 11px; border: none; cursor: pointer; color: white; }
+        .not-submitted { background: #e74c3c; } /* 未提出用（赤） */
+        .completed { background: #2ecc71; }    /* 完了用（緑） */
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>📝 課題管理アプリ (保存機能付き)</h1>
-        <div class="input-form">
+        <h1>📝 課題管理 (履歴記録機能)</h1>
+        
+        <div>
             <input type="text" id="subject" placeholder="授業名">
             <input type="text" id="content" placeholder="内容">
             <input type="date" id="deadline">
-            <button onclick="addTask()">登録</button>
+            <button onclick="addTask()">課題を追加</button>
         </div>
+
         <table>
             <thead>
-                <tr><th>授業名</th><th>内容</th><th>締切</th></tr>
+                <tr>
+                    <th>授業名</th>
+                    <th>内容</th>
+                    <th>締切</th>
+                    <th>状況</th>
+                    <th>履歴情報（登録日/更新日）</th>
+                </tr>
             </thead>
             <tbody id="task-list"></tbody>
         </table>
     </div>
 
     <script>
-        // 【ステップ2】LocalStorageからデータを読み込む
+        // 【ステップ2】LocalStorageからの読み込み
         let tasks = JSON.parse(localStorage.getItem('myTasks')) || [];
 
+        // 【ステップ1】課題追加の基本機能
         function addTask() {
             const subject = document.getElementById('subject').value;
             const content = document.getElementById('content').value;
@@ -39,24 +56,61 @@
 
             if (!subject || !content || !deadline) return alert("入力してください");
 
-            const newTask = { subject, content, deadline };
-            tasks.push(newTask);
+            // 【ステップ3】先生の指示：「いつ追加したか」がわかるように日時を取得
+            const now = new Date().toLocaleString('ja-JP');
+
+            const newTask = {
+                id: Date.now(), // 個別識別のためのID
+                subject,
+                content,
+                deadline,
+                status: "未提出",  // 【ステップ3】初期状態を設定
+                created_at: now,   // 【ステップ3】登録日時
+                updated_at: now    // 【ステップ3】更新日時（初期は登録と同じ）
+            };
             
-            // 【ステップ2】保存して表示
+            tasks.push(newTask);
             saveAndRender();
         }
 
-        function saveAndRender() {
-            // LocalStorageに保存
-            localStorage.setItem('myTasks', JSON.stringify(tasks));
+        // 【ステップ3】状況（未提出/完了）を切り替える関数
+        // 状況を変えるたびに「更新日時」を上書きするのがポイント
+        function toggleStatus(id) {
+            const now = new Date().toLocaleString('ja-JP');
+            tasks = tasks.map(t => {
+                if (t.id === id) {
+                    const nextStatus = t.status === "未提出" ? "完了" : "未提出";
+                    return { ...t, status: nextStatus, updated_at: now }; // 更新日時を最新に
+                }
+                return t;
+            });
+            saveAndRender();
+        }
 
+        // 【ステップ2】データの保存と表示
+        function saveAndRender() {
+            localStorage.setItem('myTasks', JSON.stringify(tasks));
             const list = document.getElementById('task-list');
+            
+            // 【ステップ3】表示内容に「状況ボタン」と「登録/更新日時」を追加
             list.innerHTML = tasks.map(t => `
-                <tr><td>${t.subject}</td><td>${t.content}</td><td>${t.deadline}</td></tr>
+                <tr>
+                    <td>${t.subject}</td>
+                    <td>${t.content}</td>
+                    <td>${t.deadline}</td>
+                    <td>
+                        <button class="badge ${t.status === '完了' ? 'completed' : 'not-submitted'}" onclick="toggleStatus(${t.id})">
+                            ${t.status}
+                        </button>
+                    </td>
+                    <td>
+                        <span class="time-info">登録: ${t.created_at}</span>
+                        <span class="time-info">更新: ${t.updated_at}</span>
+                    </td>
+                </tr>
             `).join('');
         }
 
-        // 最初の一回実行
         saveAndRender();
     </script>
 </body>
